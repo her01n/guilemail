@@ -5,14 +5,14 @@
   (srfi srfi-1) (srfi srfi-27)
   (sxml simple))
 
-(define-public (attribute-ref node key)
+(define (attribute-ref node key)
   (and (list? node) (list? (cdr node)) (list? (second node))
        (equal? '@ (car (second node)))
        (find identity
              (map (lambda (ls) (and (equal? key (first ls)) (second ls))) (cdr (second node))))))
 
 ; Convert sxml content to plain text string
-(define-public (plain-text node)
+(define (plain-text node)
   (define (follow) (string-concatenate (map plain-text (cdr node))))
   (cond
     ((string? node) node)
@@ -24,7 +24,7 @@
 
 (random-source-randomize! default-random-source)
 
-(define-public (random-string length)
+(define (random-string length)
   (apply string-append
     (map
       (lambda (n)
