@@ -112,6 +112,10 @@
   (if email (set! mails (delete! email mails)))
   email)
 
+(define* (clear-mock-emails #:key to)
+  (define to-line (format #f "To: ~a\n" to))
+  (set! mails (filter (lambda (email) (and to (not (string-contains email to-line)))) mails)))
+
 (define (call-with-temporary-file-name proc)
   (define name (tmpnam))
   (with-output-to-file name (const #f))
@@ -121,32 +125,39 @@
       (delete-file name)
       (apply values vals))))
 
-(define* (receive-real-email #:key to imap username password)
+(define (execute-fetchmail imap username password commands)
   (define imap' (or imap (config-ref 'imap "IMAP hostname")))
   (define username' (or username (config-ref 'username "IMAP username")))
   (define password' (or password (config-ref 'password "IMAP password")))
+  (define fetchmail (open-output-pipe "fetchmail --fetchmailrc -"))
+  (format fetchmail "poll \"~a\"\n" imap')
+  (format fetchmail "  protocol IMAP,\n")
+  (format fetchmail "  user \"~a\",\n" username')
+  (format fetchmail "  password \"~a\",\n" password')
+  (format fetchmail "  ssl, sslcertck,\n")
+  (for-each (lambda (command) (format fetchmail "  ~a,\n" command)) commands)
+  (status:exit-val (close-pipe fetchmail)))
+
+(define* (receive-real-email #:key to imap username password)
   (call-with-temporary-file-name
     (lambda (bsmtp)
-      (define fetchmail (open-output-pipe "fetchmail --fetchmailrc -"))
-      (format fetchmail "poll \"~a\"\n" imap')
-      (format fetchmail "  protocol IMAP,\n")
-      (format fetchmail "  user \"~a\",\n" username')
-      (format fetchmail "  password \"~a\",\n" password')
-      (format fetchmail "  ssl, sslcertck,\n")
-      (format fetchmail "  fetchlimit 1,\n")
-      (format fetchmail "  bsmtp \"~a\"\n" bsmtp)
-      (match (status:exit-val (close-pipe fetchmail))
+      (match
+        (execute-fetchmail imap username password `("fetchlimit 1" ,(format #f "bsmtp ~a" bsmtp)))
         ; 0 is ok, 13 is MAXFETCH, fetchlimit 1 reached
         ((or 0 13) (call-with-input-file bsmtp get-string-all))
         (1 #f)
         ((? number? n) (throw 'receive-email "Failed to receive email: fetchmail returned ~a" n))
         (#f (throw 'receive-email "Failed to receive email: fetchmail interrupted"))))))
 
-(define* (receive-email #:key to imap username password) 
-  (if mock
-      (receive-mock-email #:to to)
-      (receive-real-email #:to to #:imap imap #:username username #:password password)))
+(define* (clear-real-emails #:key to imap username password)
+  (match
+    (execute-fetchmail imap username password '("bsmtp /dev/null"))
+    ((or 0 1) #t)
+    (x (throw 'clear-email "Failed to clear emails: ~a" x))))
 
-(export receive-email)
+(define-public (receive-email . args)
+  (apply (if mock receive-mock-email receive-real-email) args))
 
+(define-public (clear-emails . args)
+  (apply (if mock clear-mock-emails clear-real-emails) args))
 

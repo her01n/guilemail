@@ -50,6 +50,13 @@ Finally install to guile site directory:
   - **username** IMAP username.
   - **password** IMAP password.
 
+- procedure **clear-emails [#:to recipient] [#:smtp hostname] [#:username user] [#:password pass]**
+
+  Mark all unseen mails as seen.
+
+  - **to** Mark only mails for this recipient.
+  - **smtp**, **username**, **password** Connections parameters, see *send-email*.
+
 - procedure **mock-email!**
 
   Enable email mocking.
@@ -59,7 +66,7 @@ Finally install to guile site directory:
 ## Configuration
 
 Mail configuration may be saved in a file named **mail.config** in the program working directory.
-Caller may now skip this parameters from *send-email* and *receive-email* calls.
+Caller may now skip this parameters from *send-email*, *receive-email* or *clear-emails* calls.
 
 Example for gmail:
 

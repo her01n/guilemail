@@ -34,3 +34,7 @@
   (assert (not (receive-email #:to "Ja4aenou@gmail.com")))
   (assert (receive-email #:to "chohd8Ul@gmail.com")))
    
+(test clear-emails
+  (send-email "test" #:to "chohd8Ul@gmail.com")
+  (clear-emails)
+  (assert (not (receive-email))))

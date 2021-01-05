@@ -20,3 +20,9 @@
 (test error
   (assert (throws-exception (receive-email #:username "santa.claus"))))
 
+(test clear-emails
+  (send-email "Test email for deletion, please ignore." #:subject "Test" #:to address)
+  (clear-emails)
+  (assert (not (receive-email))))
+
+
