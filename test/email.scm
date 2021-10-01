@@ -38,3 +38,10 @@
   (send-email "test" #:to "chohd8Ul@gmail.com")
   (clear-emails)
   (assert (not (receive-email))))
+
+(test unicode-in-subject
+  (send-email "test" #:to "test@example.com" #:subject "čučoriedka")
+  (let ((mail (receive-email)))
+    (assert (not (string-contains mail "Subject: čučoriedka")))
+    (assert (string-contains mail "Subject: =?utf-8?B?xI11xI1vcmllZGth?="))))
+

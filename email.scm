@@ -36,12 +36,33 @@
 (define (sxml? object)
   (and (list? object) (not (null? object)) (symbol? (car object))))
 
+(define (string->base64 string)
+  (define in-pipe (pipe))
+  (define result
+    (with-input-from-port (car in-pipe)
+      (lambda ()
+        (let ((proc (open-input-pipe "base64")))
+          (put-string (cdr in-pipe) string)
+          (close-port (cdr in-pipe))
+          (let ((result (get-line proc)))
+            (close-pipe proc)
+            result)))))
+  (close-port (car in-pipe))
+  result)
+
+(define (encode-header-value value)
+  (define plain (string->char-set "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXUZ0123456789 "))
+  (if
+    (string-every plain value)
+    value
+    (string-append "=?utf-8?B?" (string->base64 value) "?=")))
+
 (define* (create-email content #:key to subject)
   (define boundary (random-string 32))
   (call-with-output-string
     (lambda (out)
       (format out "To: ~a\n" to)
-      (format out "Subject: ~a\n" subject)
+      (format out "Subject: ~a\n" (encode-header-value (or subject "")))
       (format out "MIME-Version: 1.0\n")
       (cond
         ((string? content)
